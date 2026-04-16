@@ -4,7 +4,7 @@
 #   build   Build the caddy-proxy container image
 #   deploy  Apply the secret and deploy the pod via podman kube play
 #   status  Show pod and container status
-#   logs    Tail logs from the caddy container
+#   logs [-f] [N]  Show container logs; -f to follow (default: all lines, no follow)
 #   clean   Stop the pod, remove the image, and remove the secret
 
 set -e
@@ -80,8 +80,29 @@ cmd_status() {
 }
 
 cmd_logs() {
-  info "Tailing logs for ${CONTAINER_NAME} (Ctrl-C to stop)..."
-  podman logs -f "$CONTAINER_NAME"
+  TAIL="all"
+  FOLLOW=0
+
+  shift  # drop the 'logs' argument
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -f|--follow) FOLLOW=1 ;;
+      [0-9]*)      TAIL="$1" ;;
+      *) error "Unknown logs option: $1. Usage: logs [-f] [N]" ;;
+    esac
+    shift
+  done
+
+  TAIL_ARGS=""
+  [ "$TAIL" != "all" ] && TAIL_ARGS="--tail $TAIL"
+
+  if [ "$FOLLOW" = "1" ]; then
+    info "Following logs for ${CONTAINER_NAME} (lines: ${TAIL}) (Ctrl-C to stop)..."
+    podman logs -f $TAIL_ARGS "$CONTAINER_NAME"
+  else
+    info "Showing logs for ${CONTAINER_NAME} (lines: ${TAIL})..."
+    podman logs $TAIL_ARGS "$CONTAINER_NAME"
+  fi
 }
 
 cmd_clean() {
@@ -109,7 +130,7 @@ case "${1:-}" in
   build)  cmd_build  ;;
   deploy) cmd_deploy ;;
   status) cmd_status ;;
-  logs)   cmd_logs   ;;
+  logs)   cmd_logs "$@" ;;
   clean)  cmd_clean  ;;
   *)
     printf 'Usage: %s {build|deploy|status|logs|clean}\n' "$0"
@@ -117,7 +138,7 @@ case "${1:-}" in
     printf '  build   Build the caddy-proxy container image\n'
     printf '  deploy  Apply the secret and deploy the pod\n'
     printf '  status  Show pod, container, image, and secret status\n'
-    printf '  logs    Tail logs from the caddy container\n'
+    printf '  logs [-f] [N]  Show container logs; -f to follow (default: all lines, no follow)\n'
     printf '  clean   Stop pod, remove image and secret\n'
     exit 1
     ;;
