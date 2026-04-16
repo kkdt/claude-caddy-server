@@ -8,10 +8,13 @@
 #   UPSTREAM_API_URL   Remote API base URL (e.g., https://api.example.com)
 #   UI_ORIGIN          Local UI origin for CORS (e.g., http://localhost:3000)
 #
-# Required certificate files (mounted at /certs):
-#   /certs/client.crt  Client certificate presented to upstream (mTLS)
-#   /certs/client.key  Client private key
-#   /certs/ca.crt      CA certificate to verify upstream server
+# Certificate environment variables (set automatically by entrypoint.sh):
+#   CLIENT_CERT_PATH   Path to client certificate for mTLS
+#   CLIENT_KEY_PATH    Path to client private key for mTLS
+#   CA_CERT_PATH       Path to CA certificate for verifying upstream
+#
+# Certificates are loaded from /certs if provided; otherwise entrypoint.sh
+# generates self-signed certificates at /tmp/caddy-certs.
 
 {
     # Enable admin API for graceful config reload during token refresh
@@ -41,11 +44,12 @@
     header Access-Control-Allow-Credentials "true"
 
     reverse_proxy {$UPSTREAM_API_URL} {
-        # mTLS: present client certificate when connecting to upstream
+        # mTLS: present client certificate when connecting to upstream.
+        # Paths are set by entrypoint.sh — either from /certs or auto-generated.
         transport http {
             tls
-            tls_client_auth /certs/client.crt /certs/client.key
-            tls_trusted_ca_certs /certs/ca.crt
+            tls_client_auth      {$CLIENT_CERT_PATH} {$CLIENT_KEY_PATH}
+            tls_trusted_ca_certs {$CA_CERT_PATH}
         }
 
         # Keycloak Bearer token — written at startup and refreshed automatically

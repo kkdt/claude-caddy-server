@@ -68,7 +68,8 @@ Set these in `pod.yaml` under `spec.containers[].env`:
 
 ### Certificates
 
-The following certificate files must be present on the host and mounted into the container at `/certs`:
+Certificate files are optional. At startup, `entrypoint.sh` checks `/certs` for the following
+files:
 
 | File | Purpose |
 |------|---------|
@@ -76,7 +77,14 @@ The following certificate files must be present on the host and mounted into the
 | `/certs/client.key` | Client private key |
 | `/certs/ca.crt` | CA certificate used to verify the upstream server |
 
-Update the `hostPath` volume in `pod.yaml` to point to the directory containing these files:
+**If all three files are present**, they are used as-is.
+
+**If any file is missing**, self-signed certificates are generated automatically at
+`/tmp/caddy-certs` using OpenSSL and used for the session. A warning is logged at startup.
+Self-signed certificates are suitable for local development only — the upstream API must be
+configured to accept them or skip client certificate verification.
+
+To provide real certificates, update the `hostPath` volume in `pod.yaml`:
 
 ```yaml
 volumes:
@@ -85,6 +93,9 @@ volumes:
       path: /path/to/certs    # <-- update this
       type: Directory
 ```
+
+To rely entirely on auto-generated certificates, remove the `volumes` and `volumeMounts`
+sections from `pod.yaml`.
 
 ---
 
@@ -110,9 +121,14 @@ account — no user login is involved.
 
 ### mTLS
 
-Caddy presents `client.crt` / `client.key` when establishing TLS connections to the upstream API.
-The upstream server's certificate is verified against `ca.crt`. This is configured in the
-`transport http` block of the `Caddyfile`.
+Caddy presents a client certificate when establishing TLS connections to the upstream API, and
+verifies the upstream server's certificate against a CA bundle. Certificate paths are resolved
+by `entrypoint.sh` at startup and exported as `CLIENT_CERT_PATH`, `CLIENT_KEY_PATH`, and
+`CA_CERT_PATH`, which the `Caddyfile` reads via environment variable placeholders.
+
+If no certificates are mounted at `/certs`, `entrypoint.sh` generates a local CA and a
+client certificate signed by it using OpenSSL. The generated files are ephemeral — they are
+recreated on each container start.
 
 ### CORS
 
