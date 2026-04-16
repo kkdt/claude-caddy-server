@@ -36,6 +36,11 @@ cmd_build() {
 }
 
 cmd_deploy() {
+  if podman pod exists "$POD_NAME" 2>/dev/null; then
+    info "Pod '${POD_NAME}' already exists — tearing down before redeploy..."
+    podman kube down "$POD_MANIFEST" 2>/dev/null || true
+  fi
+
   if [ -f "$SECRET_MANIFEST" ]; then
     info "Applying secret from ${SECRET_MANIFEST}..."
     podman kube play "$SECRET_MANIFEST"

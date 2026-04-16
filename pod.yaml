@@ -51,17 +51,22 @@ spec:
         - name: KEYCLOAK_REALM
           value: "myrealm"
 
-        # Client credentials sourced from the keycloak-creds Secret
+        # Client credentials sourced from the keycloak-creds Secret.
+        # optional: true allows the pod to start without the secret — entrypoint.sh
+        # will fail at token fetch if these are empty. Create secret.yaml from
+        # secret.yaml.example and run ./caddy.sh deploy to apply credentials.
         - name: KEYCLOAK_CLIENT_ID
           valueFrom:
             secretKeyRef:
               name: keycloak-creds
               key: client_id
+              optional: true
         - name: KEYCLOAK_CLIENT_SECRET
           valueFrom:
             secretKeyRef:
               name: keycloak-creds
               key: client_secret
+              optional: true
 
       # Mount a directory containing client.crt, client.key, and ca.crt.
       # If the files are absent, entrypoint.sh generates self-signed certificates automatically.
