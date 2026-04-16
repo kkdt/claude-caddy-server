@@ -60,6 +60,7 @@ Set these in `pod.yaml` under `spec.containers[].env`:
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `UPSTREAM_API_URL` | Remote API base URL | `https://api.example.com` |
+| `UI_ORIGIN` | Local React UI origin for CORS | `http://localhost:3000` |
 | `KEYCLOAK_URL` | Keycloak server base URL | `https://keycloak.example.com` |
 | `KEYCLOAK_REALM` | Keycloak realm name | `myrealm` |
 | `KEYCLOAK_CLIENT_ID` | Caddy's client ID in Keycloak | sourced from Secret |
@@ -113,6 +114,26 @@ Caddy presents `client.crt` / `client.key` when establishing TLS connections to 
 The upstream server's certificate is verified against `ca.crt`. This is configured in the
 `transport http` block of the `Caddyfile`.
 
+### CORS
+
+The React UI runs on a different port than the Caddy proxy (e.g., `localhost:3000` vs
+`localhost:8080`). Browsers treat different ports as different origins and enforce CORS, blocking
+requests unless the server explicitly permits them.
+
+Caddy handles this in two steps:
+
+1. **Preflight requests** — browsers send an `OPTIONS` request before any cross-origin call with
+   custom headers. Caddy matches these with the `@cors_preflight` matcher and responds immediately
+   with `204 No Content` and the required `Access-Control-*` headers, without forwarding to
+   upstream.
+
+2. **Actual requests** — Caddy injects `Access-Control-Allow-Origin` and
+   `Access-Control-Allow-Credentials` headers on all non-preflight responses.
+
+The allowed origin is set explicitly via the `UI_ORIGIN` environment variable rather than `*`.
+This is required when requests include credentials — browsers reject `Access-Control-Allow-Origin: *`
+combined with `Access-Control-Allow-Credentials: true`.
+
 ---
 
 ## Quickstart
@@ -147,6 +168,7 @@ podman kube play secret.yaml
 Update the following values in `pod.yaml`:
 
 - `UPSTREAM_API_URL` — your remote API base URL
+- `UI_ORIGIN` — your React UI origin (e.g., `http://localhost:3000`)
 - `KEYCLOAK_URL` — your Keycloak server URL
 - `KEYCLOAK_REALM` — your Keycloak realm
 - `volumes[].hostPath.path` — path to your certificate directory

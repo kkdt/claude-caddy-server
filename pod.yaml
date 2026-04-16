@@ -39,6 +39,10 @@ spec:
         - name: UPSTREAM_API_URL
           value: "https://api.example.com"
 
+        # Origin of the local React UI — used for CORS response headers
+        - name: UI_ORIGIN
+          value: "http://localhost:3000"
+
         # Keycloak configuration
         - name: KEYCLOAK_URL
           value: "https://keycloak.example.com"
