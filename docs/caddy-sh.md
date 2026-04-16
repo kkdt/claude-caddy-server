@@ -11,6 +11,7 @@ for building, deploying, monitoring, and cleaning up the proxy.
 
 ```
 ./caddy.sh {build|deploy|status|logs|clean}
+./caddy.sh logs [-f] [N]
 ```
 
 ---
@@ -92,17 +93,30 @@ caddy-proxy-caddy    Up 2 minutes    0.0.0.0:8080->80/tcp
 
 ### `logs`
 
-Tails the live log output from the Caddy container.
+Shows log output from the Caddy container.
 
 ```sh
-./caddy.sh logs
+./caddy.sh logs [-f] [N]
 ```
 
-- Follows logs in real time (equivalent to `podman logs -f caddy-proxy-caddy`)
-- Press `Ctrl-C` to stop
-- Caddy logs are emitted as JSON (configured in `Caddyfile`)
+| Option | Description |
+|--------|-------------|
+| _(none)_ | Print all log lines and exit |
+| `N` | Print the last N lines and exit |
+| `-f` | Follow log output in real time (Ctrl-C to stop) |
+| `-f N` | Follow from the last N lines |
 
-Useful for:
+Examples:
+
+```sh
+./caddy.sh logs          # print all lines and exit
+./caddy.sh logs 50       # print last 50 lines and exit
+./caddy.sh logs -f       # follow all lines
+./caddy.sh logs -f 50    # follow from last 50 lines
+./caddy.sh logs 50 -f    # same — flag order does not matter
+```
+
+Caddy logs are emitted as JSON (configured in `Caddyfile`). Useful for:
 
 - Confirming the Keycloak token was obtained at startup
 - Watching proxied requests in real time
@@ -143,8 +157,8 @@ cp secret.yaml.example secret.yaml
 # Check everything is running
 ./caddy.sh status
 
-# Watch logs
-./caddy.sh logs
+# Watch logs (follow mode)
+./caddy.sh logs -f
 
 # Tear everything down
 ./caddy.sh clean
