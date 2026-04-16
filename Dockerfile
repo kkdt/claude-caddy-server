@@ -1,4 +1,4 @@
-FROM caddy:alpine
+FROM docker.io/library/caddy:alpine
 
 # curl    — Keycloak token requests in entrypoint.sh
 # jq      — JSON parsing of Keycloak token response

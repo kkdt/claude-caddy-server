@@ -63,10 +63,9 @@ spec:
               name: keycloak-creds
               key: client_secret
 
+      # Mount a directory containing client.crt, client.key, and ca.crt.
+      # If the files are absent, entrypoint.sh generates self-signed certificates automatically.
       volumeMounts:
-        # Optional: mount a directory containing client.crt, client.key, and ca.crt.
-        # If not provided (or files are absent), entrypoint.sh generates self-signed
-        # certificates automatically. Remove this block to skip mounting entirely.
         - name: certs
           mountPath: /certs
           readOnly: true
@@ -74,7 +73,5 @@ spec:
   volumes:
     - name: certs
       hostPath:
-        # Update this path to where your certificates live on the host.
-        # Remove this volume (and the volumeMount above) to use auto-generated certs.
-        path: /path/to/certs
-        type: Directory
+        path: ./certs
+        type: DirectoryOrCreate
