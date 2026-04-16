@@ -1,0 +1,71 @@
+# Caddy local development proxy — podman kube play manifest
+#
+# Prerequisites:
+#   1. Build the image:
+#        podman build -t localhost/caddy-proxy:latest .
+#
+#   2. Apply the Keycloak credentials secret (copy secret.yaml.example → secret.yaml,
+#      fill in base64-encoded values, then apply):
+#        podman kube play secret.yaml
+#
+#   3. Ensure certificates are present at the hostPath defined in the volume below.
+#
+# Deploy:
+#   podman kube play pod.yaml
+#
+# Teardown:
+#   podman kube down pod.yaml
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: caddy-proxy
+  labels:
+    app: caddy-proxy
+spec:
+  containers:
+    - name: caddy
+      image: localhost/caddy-proxy:latest
+
+      ports:
+        # Accessible from the host at http://localhost:8080
+        - containerPort: 80
+          hostPort: 8080
+          protocol: TCP
+
+      env:
+        # Remote API that Caddy proxies to
+        - name: UPSTREAM_API_URL
+          value: "https://api.example.com"
+
+        # Keycloak configuration
+        - name: KEYCLOAK_URL
+          value: "https://keycloak.example.com"
+        - name: KEYCLOAK_REALM
+          value: "myrealm"
+
+        # Client credentials sourced from the keycloak-creds Secret
+        - name: KEYCLOAK_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: keycloak-creds
+              key: client_id
+        - name: KEYCLOAK_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: keycloak-creds
+              key: client_secret
+
+      volumeMounts:
+        # mTLS certificates — must contain: client.crt, client.key, ca.crt
+        - name: certs
+          mountPath: /certs
+          readOnly: true
+
+  volumes:
+    - name: certs
+      hostPath:
+        # Update this path to where your certificates live on the host
+        path: /path/to/certs
+        type: Directory

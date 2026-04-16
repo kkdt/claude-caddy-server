@@ -8,3 +8,7 @@
 *.log
 *.swp
 .idea/
+*.local.json
+
+# Keycloak credentials — copy from secret.yaml.example and fill in
+secret.yaml

@@ -1,0 +1,44 @@
+# Caddy reverse proxy for local UI development
+#
+# Proxies local React UI traffic to remote API services using mTLS.
+# Keycloak Bearer token is injected per-request via /tmp/caddy-token.conf,
+# which is written and refreshed by entrypoint.sh.
+#
+# Required environment variables:
+#   UPSTREAM_API_URL   Remote API base URL (e.g., https://api.example.com)
+#
+# Required certificate files (mounted at /certs):
+#   /certs/client.crt  Client certificate presented to upstream (mTLS)
+#   /certs/client.key  Client private key
+#   /certs/ca.crt      CA certificate to verify upstream server
+
+{
+    # Enable admin API for graceful config reload during token refresh
+    admin localhost:2019
+}
+
+:80 {
+    log {
+        output stdout
+        level  INFO
+        format json
+    }
+
+    reverse_proxy {$UPSTREAM_API_URL} {
+        # mTLS: present client certificate when connecting to upstream
+        transport http {
+            tls
+            tls_client_auth /certs/client.crt /certs/client.key
+            tls_trusted_ca_certs /certs/ca.crt
+        }
+
+        # Keycloak Bearer token — written at startup and refreshed automatically
+        # by entrypoint.sh; caddy reload re-reads this file on each token refresh
+        import /tmp/caddy-token.conf
+
+        header_up Host              {upstream_hostport}
+        header_up X-Real-IP         {remote_host}
+        header_up X-Forwarded-For   {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
